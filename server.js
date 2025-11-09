@@ -1,51 +1,47 @@
-const express = require("express");
-const cors = require("cors");
-const bodyParser = require("body-parser");
-const nodemailer = require("nodemailer");
+import express from "express";
+import bodyParser from "body-parser";
+import cors from "cors";
+import { Resend } from "resend";
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 app.use(cors());
 app.use(bodyParser.json());
+
+// Initialize Resend
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.post("/contact", async (req, res) => {
   const { name, email, message } = req.body;
 
-  console.log("📩 Message received:", name, email, message);
-
-  // ✅ Step 1: Create transporter
-  let transporter = nodemailer.createTransport({
-    service: "gmail",
-    
-auth: {
-  user: process.env.EMAIL_USER,
-  pass: process.env.EMAIL_PASS
-},
-  });
-
-  // ✅ Step 2: Compose email
-  let mailOptions = {
-    from: email,
-    to: "gmadhumitha.official@gmail.com", // <-- your own address to receive messages
-    subject: "New Message from Portfolio Contact Form",
-    html: `
-  <h3>New Contact Form Message</h3>
-  <p><b>Name:</b> ${name}</p>
-  <p><b>Email:</b> ${email}</p>
-  <p><b>Message:</b> ${message}</p>
-`
-,
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
-    console.log("✅ Email sent successfully!");
-    res.json({ success: true, message: "Message sent successfully!" });
+    // Send email using Resend
+    const data = await resend.emails.send({
+      from: "Portfolio Contact <onboarding@resend.dev>",
+      to: "gmadhumitha.official@gmail.com",  // replace with your email
+      subject: `New Contact Message from ${name}`,
+      html: `
+        <h3>New message from your portfolio contact form</h3>
+        <p><b>Name:</b> ${name}</p>
+        <p><b>Email:</b> ${email}</p>
+        <p><b>Message:</b><br>${message}</p>
+      `,
+    });
+
+    console.log("✅ Email sent successfully:", data);
+    res.status(200).json({ success: true, message: "Email sent successfully" });
   } catch (error) {
     console.error("❌ Error sending email:", error);
-    res.status(500).json({ success: false, message: "Failed to send message." });
+    res.status(500).json({ success: false, message: "Email sending failed" });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+// Root route
+app.get("/", (req, res) => {
+  res.send("🚀 Portfolio backend is running!");
+});
 
+app.listen(PORT, () => {
+  console.log(`✅ Server running on port ${PORT}`);
+});
